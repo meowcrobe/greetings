@@ -65,13 +65,12 @@ void main() {
     hash(id + numParticles * 2)
   ) - 0.5) * driftAmount;
   
-  // Drift Modulation
+  // Fetch Flow Data
   vec2 uv = inPos.xy * 0.5 + 0.5;
   vec4 flowData = vec4(-1.0);
   
   if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
       flowData = texture(flowMap, uv);
-      // Distance based drift disabled
   }
 
   vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, time) * 0.4;
@@ -86,7 +85,7 @@ void main() {
   combinedVelo.z += zForce;
   
   // --- JFA Flow Logic ---
-  if (flowData.r > -0.5) { // Reuse sample
+  if (flowData.r > -0.5) { // Valid seed found
       vec2 seed = flowData.xy;
       vec2 targetWorld = seed * 2.0 - 1.0;
       vec2 toTarget = targetWorld - inPos.xy;

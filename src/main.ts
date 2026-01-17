@@ -275,7 +275,7 @@ class ParticleSystem {
     const elapsed = time - this.lastSwitchTime;
     const phase = Math.min(elapsed / this.phaseDuration, 1.0);
     const rawFlow = 1.0 - Math.cos(phase * Math.PI * 2.0);
-    const flowStrength = rawFlow;
+    const flowStrength = 3. * rawFlow ** 2;
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
@@ -285,7 +285,7 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0); // Reset wind to 0
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03 * (3.0 - rawFlow));
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03); // * (3.0 - rawFlow));
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zCenter"), 1.8);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);
