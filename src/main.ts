@@ -275,7 +275,7 @@ class ParticleSystem {
     const elapsed = time - this.lastSwitchTime;
     const phase = Math.min(elapsed / this.phaseDuration, 1.0);
     const rawFlow = 1.0 - Math.cos(phase * Math.PI * 2.0);
-    const flowStrength = rawFlow ** 2;
+    const flowStrength = rawFlow;
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
@@ -335,7 +335,9 @@ class ParticleSystem {
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, "aspect"), aspectX, 1.0/aspectX);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "particleSize"), 0.008);
     
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkPhase"), (time * 0.2) % 1.0);
+    // Sync blink to phase for consistent timing
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkPhase"), phase);
+    
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkAmount"), 3.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkSlope"), 15.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "relativeFeather"), 0.5); 

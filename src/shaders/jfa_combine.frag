@@ -36,6 +36,7 @@ void main() {
     } else {
         // Outside
         // RG=Target, B=Distance, A=Outside(0)
-        fragColor = vec4(stdSeed, dist, 0.0);
+        // User request: 1/2u equals 1 -> dist * 2.0
+        fragColor = vec4(stdSeed, dist * 2.0, 0.0);
     }
 }

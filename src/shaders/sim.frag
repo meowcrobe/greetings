@@ -73,8 +73,8 @@ void main() {
       flowData = texture(flowMap, uv);
       if (flowData.r > -0.5) {
           float dist = flowData.b;
-          // Scale dist to make effect visible closer to shape
-          float dFactor = min(dist * 4.0, 1.0); 
+          // Dist is already scaled (1/2u = 1)
+          float dFactor = min(dist, 1.0); 
           float modFactor = mix(1.0, dFactor, clamp(rawFlow * 0.5, 0.0, 1.0));
           drift *= modFactor;
       }
