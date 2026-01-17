@@ -71,13 +71,7 @@ void main() {
   
   if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
       flowData = texture(flowMap, uv);
-      if (flowData.r > -0.5) {
-          float dist = flowData.b;
-          // Dist is already scaled (1/2u = 1)
-          float dFactor = min(dist, 1.0); 
-          float modFactor = mix(1.0, dFactor, clamp(rawFlow * 0.5, 0.0, 1.0));
-          drift *= modFactor;
-      }
+      // Distance based drift disabled
   }
 
   vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, time) * 0.4;

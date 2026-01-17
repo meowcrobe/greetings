@@ -281,8 +281,7 @@ class ParticleSystem {
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "time"), time * 0.2);
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.3 - rawFlow * 0.1);
-
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2); 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0); // Reset wind to 0
     
