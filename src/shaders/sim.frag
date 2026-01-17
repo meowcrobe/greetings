@@ -67,11 +67,9 @@ void main() {
   
   // Fetch Flow Data
   vec2 uv = inPos.xy * 0.5 + 0.5;
-  vec4 flowData = vec4(-1.0);
   
-  if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-      flowData = texture(flowMap, uv);
-  }
+  // No bounds check needed with CLAMP_TO_EDGE
+  vec4 flowData = texture(flowMap, uv);
 
   vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, time) * 0.4;
   vec3 noise = fbm4d(noisePos);

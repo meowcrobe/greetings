@@ -111,7 +111,7 @@ class ParticleSystem {
 
   buildPath() {
     const name = names[this.coupleIndex];
-    this.path = [name, "♥", "CCB", "♥"];
+    this.path = [name];
     
     // Reset index
     this.pathIndex = 0;
@@ -275,13 +275,12 @@ class ParticleSystem {
     const elapsed = time - this.lastSwitchTime;
     const phase = Math.min(elapsed / this.phaseDuration, 1.0);
     const rawFlow = 1.0 - Math.cos(phase * Math.PI * 2.0);
-    const flowStrength = 3. * rawFlow ** 2;
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
+    console.log(rawFlow); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), rawFlow * 2.);
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "time"), time * 0.2);
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.4); 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0); // Reset wind to 0
     
