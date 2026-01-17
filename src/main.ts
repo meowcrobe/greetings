@@ -111,7 +111,7 @@ class ParticleSystem {
 
   buildPath() {
     const name = names[this.coupleIndex];
-    this.path = [name, "<3", "CCB", "<3"];
+    this.path = [name, "♥", "CCB", "♥"];
     
     // Reset index
     this.pathIndex = 0;
@@ -124,14 +124,18 @@ class ParticleSystem {
     this.textManager.computeJFA();
     
     // Update Target Colors
-    if (text === "❤" || text === "<3") {
-        this.targetColors.a = hsv2rgb(0, 1, 1); // Red
-        this.targetColors.b = hsv2rgb(60, 1, 1); // Yellow
+    if (text === "CCB") {
+        this.targetColors.a = [1, 1, 1]; // White
+        this.targetColors.b = [0, 0.2, 1.0]; // Blue
+    } else if (text === "❤" || text === "<3" || text === "♥") {
+        // Center on Red (0) -> -20 to +20
+        this.targetColors.a = hsv2rgb(340, 1, 1); 
+        this.targetColors.b = hsv2rgb(20, 1, 1); 
     } else {
-        // Use hash for consistent random color
+        // Center on Random
         const hue = stringToHue(text);
-        this.targetColors.a = hsv2rgb(hue, 1, 1);
-        this.targetColors.b = hsv2rgb((hue + 60) % 360, 1, 1);
+        this.targetColors.a = hsv2rgb((hue - 20 + 360) % 360, 1, 1);
+        this.targetColors.b = hsv2rgb((hue + 20) % 360, 1, 1);
     }
   }
   
@@ -275,7 +279,7 @@ class ParticleSystem {
     // Drift Boost: Peak at phase 0.333 (120 deg), which is 60 deg before Center (180 deg)
     const driftPhase = (phase - 0.333) * Math.PI * 2.0;
     const driftBoost = 0.5 * (1.0 + Math.cos(driftPhase));
-    const driftAmount = 0.05 * (1.0 + 2.0 * driftBoost); 
+    const driftAmount = 0.05 * (1.0 + 5.0 * driftBoost); 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), driftAmount);
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
@@ -313,10 +317,10 @@ class ParticleSystem {
     
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "intensityFactor"), 1.0);
     
-    // Focus Distance Animation (4 -> 2 -> 4)
-    // Peak (2.0) at phase 0.5
+    // Focus Distance Animation (4.0 -> 1.5 -> 4.0)
+    // Peak (1.5) at phase 0.5
     const focusCos = Math.cos((phase - 0.5) * Math.PI * 2.0);
-    const focusDistance = 3.0 - 1.0 * focusCos;
+    const focusDistance = 2.75 - 1.25 * focusCos;
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "focusDistance"), focusDistance);
 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "invMaxDistance"), 0.1);
@@ -325,7 +329,7 @@ class ParticleSystem {
     // Use dynamic colors
     gl.uniform3fv(gl.getUniformLocation(this.renderProgram, "colorA"), this.currentColors.a); 
     gl.uniform3fv(gl.getUniformLocation(this.renderProgram, "colorB"), this.currentColors.b); 
-    gl.uniform3f(gl.getUniformLocation(this.renderProgram, "intensityColor"), 0.1, 0.1, 0.1); 
+    gl.uniform3f(gl.getUniformLocation(this.renderProgram, "intensityColor"), 1.0, 0.7, 0.2);  
     
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "dofAmount"), 2);
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, "aspect"), aspectX, 1.0/aspectX);
@@ -352,14 +356,18 @@ class ParticleSystem {
     gl.useProgram(this.debugProgram);
     gl.bindVertexArray(this.quadVao);
     
-    gl.viewport(0, this.canvas.height - 256, 256, 256);
+    // Top Left: 16:9 small (320x180)
+    const debugW = 320;
+    const debugH = 180;
+    
+    gl.viewport(0, this.canvas.height - debugH, debugW, debugH);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.textManager.textTexture);
     gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_texture"), 0);
     gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_mode"), 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     
-    gl.viewport(this.canvas.width - 256, this.canvas.height - 256, 256, 256);
+    gl.viewport(this.canvas.width - debugW, this.canvas.height - debugH, debugW, debugH);
     gl.bindTexture(gl.TEXTURE_2D, this.textManager.getFlowTexture());
     gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_mode"), 1);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

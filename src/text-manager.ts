@@ -18,7 +18,8 @@ export class TextManager {
     
     quadVao: WebGLVertexArrayObject;
     
-    size: number = 512; 
+    width: number = 1024;
+    height: number = 576; // 16:9 Aspect Ratio
     finalTexture: WebGLTexture | null = null;
     
     textureFilter: number;
@@ -35,8 +36,8 @@ export class TextManager {
         
         // 1. Setup 2D Canvas
         this.canvas2d = document.createElement('canvas');
-        this.canvas2d.width = this.size;
-        this.canvas2d.height = this.size;
+        this.canvas2d.width = this.width;
+        this.canvas2d.height = this.height;
         this.ctx2d = this.canvas2d.getContext('2d')!;
         
         // 2. Setup GL Resources
@@ -65,15 +66,15 @@ export class TextManager {
     renderText(text: string) {
         const ctx = this.ctx2d;
         // Use clearRect to ensure transparent background (Alpha=0)
-        ctx.clearRect(0, 0, this.size, this.size);
+        ctx.clearRect(0, 0, this.width, this.height);
         
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
         // Dynamic Sizing
-        const padding = this.size * 0.1; // 10% padding each side? or total? Let's say max width is 80%
-        const maxWidth = this.size * 0.8;
+        // Use width as constraint mainly
+        const maxWidth = this.width * 0.8;
         
         let fontSize = 300;
         ctx.font = `bold ${fontSize}px sans-serif`;
@@ -85,19 +86,19 @@ export class TextManager {
             ctx.font = `bold ${fontSize}px sans-serif`;
         }
         
-        ctx.fillText(text, this.size/2, this.size/2);
+        ctx.fillText(text, this.width/2, this.height/2);
         
         // Upload to texture
         const gl = this.gl;
         gl.bindTexture(gl.TEXTURE_2D, this.textTexture);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.canvas2d);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.canvas2d);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); // Reset
     }
     
     computeJFA() {
         const gl = this.gl;
-        gl.viewport(0, 0, this.size, this.size);
+        gl.viewport(0, 0, this.width, this.height);
         gl.disable(gl.BLEND);
         
         // Pass 1: Seed
@@ -112,11 +113,12 @@ export class TextManager {
         
         // Pass 2..N: Steps
         gl.useProgram(this.stepProgram);
-        gl.uniform2f(gl.getUniformLocation(this.stepProgram, "u_texSize"), this.size, this.size);
+        gl.uniform2f(gl.getUniformLocation(this.stepProgram, "u_texSize"), this.width, this.height);
         gl.uniform1i(gl.getUniformLocation(this.stepProgram, "u_input"), 0);
         
         let readIdx = 0;
-        let step = this.size / 2;
+        // Use max dimension for step
+        let step = Math.max(this.width, this.height) / 2;
         
         while (step >= 1) {
             const writeIdx = 1 - readIdx;
@@ -153,9 +155,9 @@ export class TextManager {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
         
         if (float) {
-             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, this.size, this.size, 0, gl.RGBA, gl.FLOAT, null);
+             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, this.width, this.height, 0, gl.RGBA, gl.FLOAT, null);
         } else {
-             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.size, this.size, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         }
         return tex;
     }
