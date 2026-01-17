@@ -274,17 +274,25 @@ class ParticleSystem {
     // Flow Strength Modulation
     const elapsed = time - this.lastSwitchTime;
     const phase = Math.min(elapsed / this.phaseDuration, 1.0);
-    const rawFlow = 1.0 - Math.cos(phase * Math.PI * 2.0);
-    console.log(rawFlow); 
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), rawFlow * 2.);
+    
+    // Cosine Wave: 0 -> 2 -> 0
+    const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
+    const peakedFlow = Math.pow(rawFlow, 2.0); 
+    const flowStrength = 6 * peakedFlow; 
+    
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "time"), time * 0.2);
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.4); 
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0); // Reset wind to 0
+    // Drift: High at edges, Low at center
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * peakedFlow); 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03); // * (3.0 - rawFlow));
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0);
+    
+    // Speed: High at edges, Low at center
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03 - peakedFlow * 0.02);
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zCenter"), 1.8);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);

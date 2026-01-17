@@ -22,7 +22,6 @@ uniform float scrollDelta;
 
 uniform float time;
 uniform float flowStrength;
-uniform float rawFlow; // 0..2
 
 uniform vec2 aspect; 
 
@@ -67,9 +66,9 @@ void main() {
   
   // Fetch Flow Data
   vec2 uv = inPos.xy * 0.5 + 0.5;
+  vec4 flowData = vec4(-1.0);
   
-  // No bounds check needed with CLAMP_TO_EDGE
-  vec4 flowData = texture(flowMap, uv);
+  flowData = texture(flowMap, uv);
 
   vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, time) * 0.4;
   vec3 noise = fbm4d(noisePos);
@@ -82,23 +81,11 @@ void main() {
   combinedVelo.y += yWind;
   combinedVelo.z += zForce;
   
-  // --- JFA Flow Logic ---
-  if (flowData.r > -0.5) { // Valid seed found
-      vec2 seed = flowData.xy;
-      vec2 targetWorld = seed * 2.0 - 1.0;
-      vec2 toTarget = targetWorld - inPos.xy;
-      
-      // Apply flow force
-      combinedVelo.xy += toTarget * 2.0 * flowStrength;
-      
-      // Apply damping if inside (Alpha=1.0)
-      if (flowData.a > 0.5) {
-           float dampFactor = clamp(flowStrength, 0.0, 1.0);
-           float damping = mix(1.0, 0.2, dampFactor);
-           combinedVelo *= damping;
-      }
-  }
-  // ----------------------
+  vec2 seed = flowData.xy;
+  vec2 targetWorld = seed * 2.0 - 1.0;
+  vec2 toTarget = targetWorld - inPos.xy;
+  
+  combinedVelo.xy += toTarget * 2.0 * flowStrength;
 
   vec3 newPos = inPos + combinedVelo * speed * vec3(aspect.yx * invZ, 1.0);
   
