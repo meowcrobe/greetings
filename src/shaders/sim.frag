@@ -3,7 +3,7 @@ precision highp float;
 precision mediump int;
 
 uniform sampler2D inPosTex;
-uniform sampler2D flowMap; // JFA Flow Map
+uniform sampler2D flowMap;
 
 uniform int sqrtNumParticles;
 uniform int numParticles;
@@ -21,7 +21,8 @@ uniform float zGravity;
 uniform float scrollDelta; 
 
 uniform float time;
-uniform float flowStrength; 
+uniform float flowStrength;
+uniform float rawFlow; // 0..2
 
 uniform vec2 aspect; 
 
@@ -63,6 +64,21 @@ void main() {
     hash(id + numParticles),
     hash(id + numParticles * 2)
   ) - 0.5) * driftAmount;
+  
+  // Drift Modulation
+  vec2 uv = inPos.xy * 0.5 + 0.5;
+  vec4 flowData = vec4(-1.0);
+  
+  if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
+      flowData = texture(flowMap, uv);
+      if (flowData.r > -0.5) {
+          float dist = flowData.b;
+          // Scale dist to make effect visible closer to shape
+          float dFactor = min(dist * 4.0, 1.0); 
+          float modFactor = mix(1.0, dFactor, clamp(rawFlow * 0.5, 0.0, 1.0));
+          drift *= modFactor;
+      }
+  }
 
   vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, time) * 0.4;
   vec3 noise = fbm4d(noisePos);
@@ -76,28 +92,19 @@ void main() {
   combinedVelo.z += zForce;
   
   // --- JFA Flow Logic ---
-  vec2 uv = inPos.xy * 0.5 + 0.5;
-  
-  if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-      vec4 flowData = texture(flowMap, uv);
+  if (flowData.r > -0.5) { // Reuse sample
       vec2 seed = flowData.xy;
+      vec2 targetWorld = seed * 2.0 - 1.0;
+      vec2 toTarget = targetWorld - inPos.xy;
       
-      if (seed.x > -0.5) { // Valid seed found
-          vec2 targetWorld = seed * 2.0 - 1.0;
-          vec2 toTarget = targetWorld - inPos.xy;
-          float dist = length(toTarget);
-          
-          if (dist < 0.01) {
-              // Inside text shape: Damping modulated by flowStrength
-              // flowStrength 0 -> damping 1.0 (No change)
-              // flowStrength 1+ -> damping 0.1 (Strong slow down)
-              float dampFactor = clamp(flowStrength, 0.0, 1.0);
-              float damping = mix(1.0, 0.1, dampFactor);
-              combinedVelo *= damping;
-          } else {
-              // Outside: attract modulated by flowStrength
-              combinedVelo.xy += toTarget * 2.0 * flowStrength; 
-          }
+      // Apply flow force
+      combinedVelo.xy += toTarget * 2.0 * flowStrength;
+      
+      // Apply damping if inside (Alpha=1.0)
+      if (flowData.a > 0.5) {
+           float dampFactor = clamp(flowStrength, 0.0, 1.0);
+           float damping = mix(1.0, 0.2, dampFactor);
+           combinedVelo *= damping;
       }
   }
   // ----------------------

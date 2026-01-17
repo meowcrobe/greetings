@@ -63,7 +63,7 @@ class ParticleSystem {
   getScrollY: () => number;
 
   // Sequence State
-  phaseDuration: number = 5.0;
+  phaseDuration: number = 7.0;
   lastSwitchTime: number = 0;
   coupleIndex: number = 0;
   path: string[] = [];
@@ -238,7 +238,7 @@ class ParticleSystem {
     
     // Color Lerp
     const lerp = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t) as [number, number, number];
-    const dt = 0.05; 
+    const dt = 0.01; 
     this.currentColors.a = lerp(this.currentColors.a, this.targetColors.a, dt);
     this.currentColors.b = lerp(this.currentColors.b, this.targetColors.b, dt);
     
@@ -257,7 +257,10 @@ class ParticleSystem {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.textManager.getFlowTexture());
     gl.uniform1i(gl.getUniformLocation(this.simProgram, "flowMap"), 1);
-
+    
+    // No inverse map binding needed if using combined map in flowMap?
+    // Wait, sim.frag uses flowMap. Combined map IS flowMap.
+    
     gl.uniform1i(gl.getUniformLocation(this.simProgram, "sqrtNumParticles"), this.sqrtNumParticles);
     gl.uniform1i(gl.getUniformLocation(this.simProgram, "numParticles"), this.numParticles);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "invSqrtNumParticles"), 1.0/this.sqrtNumParticles);
@@ -272,24 +275,18 @@ class ParticleSystem {
     const elapsed = time - this.lastSwitchTime;
     const phase = Math.min(elapsed / this.phaseDuration, 1.0);
     const rawFlow = 1.0 - Math.cos(phase * Math.PI * 2.0);
-    const flowStrength = Math.pow(rawFlow, 2.0);
+    const flowStrength = rawFlow ** 2;
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "time"), time * 0.2);
     
-    // Drift Boost: Peak at phase 0.333 (120 deg), which is 60 deg before Center (180 deg)
-    const driftPhase = (phase - 0.333) * Math.PI * 2.0;
-    const driftBoost = 0.5 * (1.0 + Math.cos(driftPhase));
-    const driftAmount = 0.05 * (1.0 + 5.0 * driftBoost); 
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), driftAmount);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.3 - rawFlow * 0.1);
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0); // Reset wind to 0
     
-    // Scale speed by rawFlow (0..2) to avoid negative speed
-    // 3.0 - 0.0 = 3.0 (Fastest)
-    // 3.0 - 2.0 = 1.0 (Slowest)
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.014 * (3.0 - rawFlow));
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03 * (3.0 - rawFlow));
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zCenter"), 1.8);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);
@@ -336,13 +333,13 @@ class ParticleSystem {
     
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "dofAmount"), 2);
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, "aspect"), aspectX, 1.0/aspectX);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "particleSize"), 0.01);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "particleSize"), 0.008);
     
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkPhase"), (time * 0.2) % 1.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkAmount"), 3.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkSlope"), 15.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "relativeFeather"), 0.5); 
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "maxFd"), 5.0); 
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "maxFd"), 3.0); 
 
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.numParticles);
 
