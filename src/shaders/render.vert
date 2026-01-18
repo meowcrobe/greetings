@@ -32,6 +32,7 @@ uniform float blinkSlope;
 uniform float relativeFeather;
 
 uniform float maxFd; // Maximum blur factor
+uniform float mixBias; // 0..1 (0 = normal mix, 1 = all colorA)
 
 flat out int instanceId; 
 flat out float intensity; 
@@ -51,7 +52,7 @@ void main() {
   //oclor
   vec2 uvId = (vec2(iUvId) + 0.5) * invSqrtNumParticles; 
 
-  rgb = mix(colorA, colorB, uvId.x);
+  rgb = mix(colorA, colorB, uvId.x * (1.0 - mixBias));
 
   // particles coordinates are in viewport-normalized space
   vec3 particlePos = texture(positionsTex, uvId).xyz;

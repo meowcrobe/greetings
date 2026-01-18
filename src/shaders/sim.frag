@@ -20,7 +20,7 @@ uniform float zGravity;
 
 uniform float scrollDelta; 
 
-uniform float time;
+uniform float noiseTime;
 uniform float flowStrength;
 
 uniform vec2 aspect; 
@@ -52,10 +52,8 @@ vec3 fbm4d(vec4 p) {
 void main() {
   ivec2 iUv = ivec2(floor(particleId));
   int id = iUv.x + iUv.y * sqrtNumParticles;
-  float normId = float(id) * invNumParticles;
 
   vec3 inPos = texelFetch(inPosTex, iUv, 0).xyz;
-
   float noiseSpeed = float(iUv.y) * invSqrtNumParticles + 0.5;
 
   vec3 drift = (vec3(
@@ -66,11 +64,10 @@ void main() {
   
   // Fetch Flow Data
   vec2 uv = inPos.xy * 0.5 + 0.5;
-  vec4 flowData = vec4(-1.0);
   
-  flowData = texture(flowMap, uv);
+  vec2 flow = texture(flowMap, uv).xy * 2.0 - 1.0; 
 
-  vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, time) * 0.4;
+  vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, noiseTime);
   vec3 noise = fbm4d(noisePos);
 
   float zForce = (zCenter - inPos.z) * zGravity;
@@ -81,13 +78,11 @@ void main() {
   combinedVelo.y += yWind;
   combinedVelo.z += zForce;
   
-  vec2 seed = flowData.xy;
-  vec2 targetWorld = seed * 2.0 - 1.0;
-  vec2 toTarget = targetWorld - inPos.xy;
+  combinedVelo *= speed; 
   
-  combinedVelo.xy += toTarget * 2.0 * flowStrength;
+  combinedVelo.xy += flow * flowStrength;
 
-  vec3 newPos = inPos + combinedVelo * speed * vec3(aspect.yx * invZ, 1.0);
+  vec3 newPos = inPos + combinedVelo * vec3(aspect.yx * invZ, 1.0);
   
   newPos.y += scrollDelta;
 

@@ -27,12 +27,8 @@ export class TextManager {
     constructor(gl: WebGL2RenderingContext) {
         this.gl = gl;
         
-        // Check for Linear Float extension
-        const ext = gl.getExtension('OES_texture_float_linear');
-        if (!ext) {
-             console.warn("OES_texture_float_linear not supported, using NEAREST filtering for flow map.");
-        }
-        this.textureFilter = ext ? gl.LINEAR : gl.NEAREST;
+        // JFA requires NEAREST filtering to propagate exact seeds.
+        this.textureFilter = gl.NEAREST;
         
         // 1. Setup 2D Canvas
         this.canvas2d = document.createElement('canvas');
