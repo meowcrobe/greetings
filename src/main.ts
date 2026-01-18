@@ -191,7 +191,9 @@ class ParticleSystem {
     for(let i=0; i<2; i++) {
         const tex = gl.createTexture()!;
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, data);
+        // Use gl.FLOAT for data type because we are supplying Float32Array. 
+        // The internal format RGBA16F handles the precision storage.
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, size, size, 0, gl.RGBA, gl.FLOAT, data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -283,7 +285,7 @@ class ParticleSystem {
     // Cosine Wave: 0 -> 2 -> 0
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
-    const flowStrength = peakedFlow; 
+    const flowStrength = 2 * peakedFlow; 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
@@ -293,10 +295,10 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.4);
     
     // Drift: High at edges, Low at center
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * peakedFlow); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.3 * peakedFlow); 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.8 - 0.7 * peakedFlow);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0); 
     
     // Speed: High at edges, Low at center
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03 - peakedFlow * 0.02);
