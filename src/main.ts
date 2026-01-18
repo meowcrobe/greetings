@@ -136,8 +136,8 @@ class ParticleSystem {
     } else {
         // Center on Random
         const hue = stringToHue(text);
-        this.targetColors.a = hsv2rgb((hue - 20 + 360) % 360, 1, 1);
-        this.targetColors.b = hsv2rgb((hue + 20) % 360, 1, 1);
+        this.targetColors.a = hsv2rgb(hue % 360, 1, 1);
+        this.targetColors.b = hsv2rgb((hue + 120) % 360, 1, 1);
     }
   }
   
@@ -314,23 +314,16 @@ class ParticleSystem {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE); 
 
-    // Render Text Texture Background
-    // gl.useProgram(this.debugProgram);
-    // gl.bindVertexArray(this.quadVao);
-    // gl.activeTexture(gl.TEXTURE0);
-    // gl.bindTexture(gl.TEXTURE_2D, this.textManager.textTexture);
-    // gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_texture"), 0);
-    // gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_mode"), 0);
-    // gl.uniform1f(gl.getUniformLocation(this.debugProgram, "u_opacity"), peakedFlow * 0.3); 
-    // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
     gl.useProgram(this.renderProgram);
+    
+    // Disable Alpha Write for particles so they don't occlude the CSS background
+    gl.colorMask(true, true, true, false);
     
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.posTextures[writeIdx]); 
@@ -345,7 +338,7 @@ class ParticleSystem {
     // Focus Distance Animation (4.0 -> 1.5 -> 4.0)
     // Peak (1.5) at phase 0.5
     const focusCos = Math.cos((phase - 0.5) * Math.PI * 2.0);
-    const focusDistance = 2.8 - 1. * focusCos;
+    const focusDistance = 2.8 - 1 * focusCos;
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "focusDistance"), focusDistance);
 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "invMaxDistance"), 0.1);
@@ -370,6 +363,8 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "mixBias"), peakedFlow);
 
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.numParticles);
+    
+    gl.colorMask(true, true, true, true); // Restore Alpha Write
 
     // this.renderDebug();
 
