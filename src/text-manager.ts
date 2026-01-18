@@ -1,6 +1,7 @@
 import QUAD_VERT from './shaders/quad.vert';
 import SEED_FRAG from './shaders/jfa_seed.frag';
 import STEP_FRAG from './shaders/jfa_step.frag';
+import COMBINE_FRAG from './shaders/jfa_combine.frag';
 
 export class TextManager {
     gl: WebGL2RenderingContext;
@@ -15,6 +16,7 @@ export class TextManager {
     // Programs
     seedProgram: WebGLProgram;
     stepProgram: WebGLProgram;
+    combineProgram: WebGLProgram;
     
     quadVao: WebGLVertexArrayObject;
     
@@ -50,6 +52,7 @@ export class TextManager {
         // 3. Compile Shaders
         this.seedProgram = this.createProgram(QUAD_VERT, SEED_FRAG);
         this.stepProgram = this.createProgram(QUAD_VERT, STEP_FRAG);
+        this.combineProgram = this.createProgram(QUAD_VERT, COMBINE_FRAG);
         
         // 4. Quad
         this.quadVao = this.createQuad();
@@ -131,7 +134,19 @@ export class TextManager {
             step /= 2;
         }
         
-        this.finalTexture = this.jfaTextures[readIdx];
+        // Final Pass: Combine (Compute Vector/Distance)
+        // Output to the OTHER buffer (writeIdx)
+        const finalWriteIdx = 1 - readIdx;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.jfaFbos[finalWriteIdx]);
+        
+        gl.useProgram(this.combineProgram);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.jfaTextures[readIdx]);
+        gl.uniform1i(gl.getUniformLocation(this.combineProgram, "u_standard"), 0);
+        
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        
+        this.finalTexture = this.jfaTextures[finalWriteIdx];
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
     

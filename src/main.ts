@@ -283,9 +283,9 @@ class ParticleSystem {
     // Cosine Wave: 0 -> 2 -> 0
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
-    const flowStrength = 6 * peakedFlow; 
+    const flowStrength = 0.2 * peakedFlow; 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength * 0.05 );
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     this.noiseTime += deltaTime * 0.4; 

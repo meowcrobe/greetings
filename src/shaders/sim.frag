@@ -65,7 +65,7 @@ void main() {
   // Fetch Flow Data
   vec2 uv = inPos.xy * 0.5 + 0.5;
   
-  vec2 flow = texture(flowMap, uv).xy * 2.0 - 1.0; 
+  vec2 flow = texture(flowMap, uv).xy; 
 
   vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, noiseTime);
   vec3 noise = fbm4d(noisePos);
