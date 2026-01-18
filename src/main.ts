@@ -283,22 +283,23 @@ class ParticleSystem {
     // Cosine Wave: 0 -> 2 -> 0
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
-    const flowStrength = 0.2 * peakedFlow; 
+    const flowStrength = peakedFlow; 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     this.noiseTime += deltaTime * 0.4; 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseTime"), this.noiseTime);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.4);
     
     // Drift: High at edges, Low at center
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.25 * peakedFlow); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * peakedFlow); 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.5 + 0.1 * peakedFlow);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.8 - 0.7 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0.0);
     
     // Speed: High at edges, Low at center
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03 * (1 - peakedFlow));
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "speed"), 0.03 - peakedFlow * 0.02);
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zCenter"), 1.8);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);
@@ -318,14 +319,14 @@ class ParticleSystem {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE); 
 
     // Render Text Texture Background
-    gl.useProgram(this.debugProgram);
-    gl.bindVertexArray(this.quadVao);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.textManager.textTexture);
-    gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_texture"), 0);
-    gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_mode"), 0);
-    gl.uniform1f(gl.getUniformLocation(this.debugProgram, "u_opacity"), peakedFlow * 0.3); 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // gl.useProgram(this.debugProgram);
+    // gl.bindVertexArray(this.quadVao);
+    // gl.activeTexture(gl.TEXTURE0);
+    // gl.bindTexture(gl.TEXTURE_2D, this.textManager.textTexture);
+    // gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_texture"), 0);
+    // gl.uniform1i(gl.getUniformLocation(this.debugProgram, "u_mode"), 0);
+    // gl.uniform1f(gl.getUniformLocation(this.debugProgram, "u_opacity"), peakedFlow * 0.3); 
+    // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     gl.useProgram(this.renderProgram);
     
@@ -342,7 +343,7 @@ class ParticleSystem {
     // Focus Distance Animation (4.0 -> 1.5 -> 4.0)
     // Peak (1.5) at phase 0.5
     const focusCos = Math.cos((phase - 0.5) * Math.PI * 2.0);
-    const focusDistance = 2.75 - 1.25 * focusCos;
+    const focusDistance = 2.8 - 1. * focusCos;
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "focusDistance"), focusDistance);
 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "invMaxDistance"), 0.1);
@@ -368,7 +369,7 @@ class ParticleSystem {
 
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.numParticles);
 
-    this.renderDebug();
+    // this.renderDebug();
 
     this.currentIdx = writeIdx;
     requestAnimationFrame(this.animate);

@@ -21,6 +21,7 @@ uniform float zGravity;
 uniform float scrollDelta; 
 
 uniform float noiseTime;
+uniform float noiseFrequency;
 uniform float flowStrength;
 
 uniform vec2 aspect; 
@@ -67,7 +68,7 @@ void main() {
   
   vec2 flow = texture(flowMap, uv).xy; 
 
-  vec4 noisePos = vec4(inPos.xy * inPos.z * aspect, inPos.z, noiseTime);
+  vec4 noisePos = vec4(vec3(inPos.xy * inPos.z * aspect, inPos.z) * 1., noiseTime);
   vec3 noise = fbm4d(noisePos);
 
   float zForce = (zCenter - inPos.z) * zGravity;
