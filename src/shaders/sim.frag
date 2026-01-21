@@ -102,12 +102,22 @@ void main() {
   } 
 
   // Overnormalized repel force (divide by sqLen)
-  vec3 repelForce = repelDir / (repelDistSq + 0.0001); 
+  vec3 repelForce = repelDir / (repelDistSq + 0.01); 
 
-  // Fetch Flow Data
-  vec2 uv = inPos.xy * 0.5 + 0.5;
-  
-  vec2 flow = texture(flowMap, uv).xy; 
+  // Fetch Flow Data (branchless portrait/landscape handling)
+  float isPortrait = step(aspect.x, 1.0); // 1 if portrait, 0 if landscape
+
+  // Scale in xy space (shrink text toward center)
+  vec2 scaledXY = inPos.xy * 1.3;
+
+  // Convert to UV, with rotation for portrait: (y, -x)
+  vec2 landscapeUV = scaledXY * 0.5 + vec2(0.63, 0.5); // u shifted +0.2 to move text left
+  vec2 portraitUV = vec2(scaledXY.y, -scaledXY.x) * 0.5 + 0.5;
+  vec2 flowUv = mix(landscapeUV, portraitUV, isPortrait);
+
+  vec2 rawFlow = texture(flowMap, flowUv).xy;
+  vec2 rotatedFlow = vec2(-rawFlow.y, rawFlow.x);
+  vec2 flow = mix(rawFlow, rotatedFlow, isPortrait); 
 
   vec4 noisePos = vec4(vec3(inPos.xy * inPos.z * aspect, inPos.z) * noiseFrequency, noiseTime);
   vec3 noise = fbm4d(noisePos);
@@ -119,26 +129,23 @@ void main() {
   vec3 combinedVelo = noiseSpeed * noise * noiseAmount + drift;
   combinedVelo.y += yWind;
   combinedVelo.z += zForce;
-  combinedVelo += repelForce * repel;
 
   combinedVelo *= speed;
 
+  combinedVelo += repelForce * repel;
   combinedVelo.xy += flow * flowStrength;
 
-  // Horizontal line alignment: push particles up or down based on y position
-  float lineMod = mod(inPos.y, lineFreq) / lineFreq; // 0..1 within each band
-  float lineFlow = (lineMod < 0.5) ? -1.0 : 1.0;     // push to band edges
-  combinedVelo.y += lineFlow * lineStrength;
+  // Line alignment: horizontal in landscape, vertical in portrait
+  float lineCoord = mix(inPos.y, inPos.x, isPortrait);
+  float lineFlow = fract(lineCoord / lineFreq) * 2.0 - 1.0;
+  combinedVelo.y += lineFlow * lineStrength * (1.0 - isPortrait);
+  combinedVelo.x += lineFlow * lineStrength * isPortrait;
 
   vec3 newPos = inPos + combinedVelo * vec3(aspect.yx * invZ, 1.0);
   
   newPos.y += scrollDelta;
 
   newPos.z = max(newPos.z, 1.0);
-
-  vec2 wrapBound = 1.0 + aspect.yx * 0.1;
-
-  newPos.xy = mod(newPos.xy + wrapBound, wrapBound * 2.0) - wrapBound;
 
   pos = vec4(newPos, closestIdx);
 }

@@ -8,9 +8,23 @@ import DEBUG_FRAG from './shaders/debug.frag';
 import { TextManager } from './text-manager';
 
 const names = [
-    "aBe", "action", "Gabor U", "Raphaël (no DMs)", "Stef Tervelde",
-    "David", "tom", "Hannah Azok", "Marcel O.", "Diana Hidalgo",
-    "Daksha", "Booker Sessoms", "Patrick François", "Emilia Wojnicka"
+// greetings
+  "Matthi", 
+  "Philipp",
+  "Raphaël", 
+  "aBe", 
+  "Tom", 
+  "gabor", 
+  "fairlix", 
+  "iq", 
+
+// bei mir gemeldet
+  "Elektrokiłka",
+  "Grit Kit", 
+
+// geliked
+  "jcelerier", 
+  "Nikita", 
 ];
 
 function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
@@ -64,11 +78,9 @@ class ParticleSystem {
   getScrollY: () => number;
 
   // Sequence State
-  phaseDuration: number = 8.0;
+  phaseDuration: number = 7.0;
   lastSwitchTime: number = 0;
-  coupleIndex: number = 0;
-  path: string[] = [];
-  pathIndex: number = 0;
+  nameIndex: number = names.length + 1; 
   pathDir: number = 1;
 
   noiseTime = 0;
@@ -102,52 +114,38 @@ class ParticleSystem {
     this.quadVao = this.createQuad();
     
     // Initialize Sequence
-    this.buildPath();
-    this.updateText();
+    this.stepSequence()
+
     // Initialize current color to target immediately
-    this.currentColors.a = [...this.targetColors.a];
-    this.currentColors.b = [...this.targetColors.b];
+    // this.currentColors.a = [...this.targetColors.a];
+    // this.currentColors.b = [...this.targetColors.b];
     
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
 
-  buildPath() {
-    const name = names[this.coupleIndex];
-    this.path = [name];
-    
-    // Reset index
-    this.pathIndex = 0;
-    this.pathDir = 1;
-  }
-  
   updateText() {
-    const text = this.path[this.pathIndex];
+    const text = names[this.nameIndex];
     this.textManager.renderText(text);
     this.textManager.computeJFA();
     
-    // Update Target Colors
-    if (text === "CCB") {
-        this.targetColors.a = [1, 1, 1]; // White
-        this.targetColors.b = [0, 0.2, 1.0]; // Blue
-    } else if (text === "❤" || text === "<3" || text === "♥") {
-        // Center on Red (0) -> -20 to +20
-        this.targetColors.a = hsv2rgb(340, 1, 1); 
-        this.targetColors.b = hsv2rgb(20, 1, 1); 
-    } else {
-        // Center on Random
-        const hue = stringToHue(text);
-        this.targetColors.a = hsv2rgb(hue % 360, 1, 1);
-        this.targetColors.b = hsv2rgb((hue + 120) % 360, 1, 1);
-    }
+    // Center on Random
+    console.log("index", this.nameIndex, "name", text);
+    const hue = stringToHue(text);
+    this.targetColors.a = hsv2rgb(hue % 360, 1, 1);
+    this.targetColors.b = hsv2rgb((hue + 120) % 360, 1, 1);
   }
   
   stepSequence() {
-    this.pathIndex++;
-    if (this.pathIndex >= this.path.length) {
-        this.coupleIndex = (this.coupleIndex + 1) % names.length;
-        this.buildPath();
+    // random name
+    let nextIndex = Math.floor(Math.random() * (names.length - 1))
+    if (nextIndex >= this.nameIndex) nextIndex += 1;
+    this.nameIndex = nextIndex;
+
+    if (this.nameIndex >= names.length) {
+        this.nameIndex = (this.nameIndex + 1) % names.length;
     }
+
     this.updateText();
   }
 
@@ -289,15 +287,17 @@ class ParticleSystem {
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 6 * peakedFlow);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 2 * peakedFlow ** 2);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     this.noiseTime += deltaTime * 0.1; 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseTime"), this.noiseTime);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.4);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.6);
     
-    // Drift: High at edges, Low at center
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * rawFlow); 
+    // Exaggerated sine: snaps to ±1 quickly, inverts each phase
+    const s = Math.sin((time / (this.phaseDuration * 2) - 0.1) * Math.PI * 2);
+    const driftFactor = Math.sign(s) * Math.pow(Math.abs(s), 0.5);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 * driftFactor); 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.8 - 0.7 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0); 
@@ -308,13 +308,12 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zCenter"), 1.8);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);
 
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "repel"), 0.05 * rawFlow);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "repel"), 0.001 * rawFlow);
 
     // Horizontal line alignment (active when flow is strong)
-    const lineStrength = 0.001 / (0.001 + 0.5 + 0.5 * Math.cos((phase - 0.1) * Math.PI * 2.0))
-    console.log(lineStrength)
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "lineStrength"), lineStrength * 0.01);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "lineFreq"), 0.03);
+    const lineStrength = 0.03 / (0.03 + 0.5 + 0.5 * Math.cos((phase - 0.15) * Math.PI * 2.0))
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "lineStrength"), lineStrength * 0.005);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "lineFreq"), 0.025);
 
     const aspectX = Math.sqrt(this.canvas.width / this.canvas.height);
     gl.uniform2f(gl.getUniformLocation(this.simProgram, "aspect"), aspectX, 1.0/aspectX);
@@ -347,7 +346,7 @@ class ParticleSystem {
     
     // Focus Distance Animation (4.0 -> 1.5 -> 4.0)
     // Peak (1.5) at phase 0.5
-    const focusCos = Math.cos((phase - 0.5) * Math.PI * 2.0 * 2);
+    const focusCos = - Math.cos((phase - 0.3) * Math.PI * 2.0 * 2);
     const focusDistance = 2.8 - 1 * focusCos;
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "focusDistance"), focusDistance);
 
@@ -359,7 +358,7 @@ class ParticleSystem {
     gl.uniform3fv(gl.getUniformLocation(this.renderProgram, "colorB"), this.currentColors.b); 
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, "intensityColor"), 1.0, 0.7, 0.2);  
     
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "dofAmount"), 2);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "dofAmount"), 2 - peakedFlow * 0.5);
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, "aspect"), aspectX, 1.0/aspectX);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "particleSize"), 0.008);
     
