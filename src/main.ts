@@ -182,18 +182,20 @@ class ParticleSystem {
     const data = new Float32Array(size * size * 4);
     
     for(let i=0; i<this.numParticles; i++) {
-        data[i*4 + 0] = (Math.random() * 2 - 1) * 2.0; 
-        data[i*4 + 1] = (Math.random() * 2 - 1) * 2.0; 
-        data[i*4 + 2] = Math.random() * 2.0;     
-        data[i*4 + 3] = 1.0;
+        data[i*4 + 0] = (Math.random() * 2 - 1) * 2.0;
+        data[i*4 + 1] = (Math.random() * 2 - 1) * 2.0;
+        data[i*4 + 2] = Math.random() * 2.0;
+        // Initialize alpha with random particle index (not self) for repel neighbor search
+        let randomIdx = Math.floor(Math.random() * this.numParticles);
+        if (randomIdx === i) randomIdx = (randomIdx + 1) % this.numParticles;
+        data[i*4 + 3] = randomIdx;
     }
 
     for(let i=0; i<2; i++) {
         const tex = gl.createTexture()!;
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        // Use gl.FLOAT for data type because we are supplying Float32Array. 
-        // The internal format RGBA16F handles the precision storage.
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, size, size, 0, gl.RGBA, gl.FLOAT, data);
+        // RGBA32F for full precision (alpha stores particle index up to 16384)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -285,17 +287,16 @@ class ParticleSystem {
     // Cosine Wave: 0 -> 2 -> 0
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
-    const flowStrength = 4 * peakedFlow; 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 4 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     this.noiseTime += deltaTime * 0.1; 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseTime"), this.noiseTime);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.4);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), Math.sin(time * 0.1) * 0.3 + 0.4);
     
     // Drift: High at edges, Low at center
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * peakedFlow); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * rawFlow); 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.8 - 0.7 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0); 
@@ -305,7 +306,9 @@ class ParticleSystem {
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zCenter"), 1.8);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);
-    
+
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "repel"), 0.05 * rawFlow);
+
     const aspectX = Math.sqrt(this.canvas.width / this.canvas.height);
     gl.uniform2f(gl.getUniformLocation(this.simProgram, "aspect"), aspectX, 1.0/aspectX);
 
@@ -354,10 +357,11 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "particleSize"), 0.008);
     
     // Sync blink to phase for consistent timing
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkPhase"), phase);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkPhase"), time * 0.1 % 1);
     
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkAmount"), 6.0);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkSlope"), 35.0);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkSlope"), 70.0);
+
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "relativeFeather"), 0.3); 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "maxFd"), 3.0); 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "mixBias"), peakedFlow);

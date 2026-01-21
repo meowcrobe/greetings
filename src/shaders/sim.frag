@@ -24,7 +24,8 @@ uniform float noiseTime;
 uniform float noiseFrequency;
 uniform float flowStrength;
 
-uniform vec2 aspect; 
+uniform vec2 aspect;
+uniform float repel;
 
 in vec2 particleId;
 
@@ -50,11 +51,18 @@ vec3 fbm4d(vec4 p) {
   return result;
 }
 
+ivec2 idToUv(int idx) {
+  return ivec2(idx % sqrtNumParticles, idx / sqrtNumParticles);
+}
+
 void main() {
   ivec2 iUv = ivec2(floor(particleId));
   int id = iUv.x + iUv.y * sqrtNumParticles;
 
-  vec3 inPos = texelFetch(inPosTex, iUv, 0).xyz;
+  vec4 inData = texelFetch(inPosTex, iUv, 0);
+  vec3 inPos = inData.xyz;
+  float closestIdx = inData.w;
+
   float noiseSpeed = float(iUv.y) * invSqrtNumParticles + 0.5;
 
   vec3 drift = (vec3(
@@ -62,7 +70,38 @@ void main() {
     hash(id + numParticles),
     hash(id + numParticles * 2)
   ) - 0.5) * driftAmount;
-  
+
+  // Stochastic nearest neighbor search
+  // Get current closest particle
+  int closestId = int(closestIdx);
+  vec3 closestPos = texelFetch(inPosTex, idToUv(closestId), 0).xyz;
+  vec3 toClosest = inPos - closestPos;
+  float closestDistSq = dot(toClosest, toClosest);
+
+  // Generate pseudorandom particle index from position + uv + time
+  float randSeed = hash(id) + inPos.x * 1000.0 + inPos.y * 1000.0 + noiseTime * 10.0;
+  int randomId = int(mod(randSeed * float(numParticles), float(numParticles)));
+  if (randomId == id) randomId = (randomId + 1) % numParticles;
+
+  vec3 randomPos = texelFetch(inPosTex, idToUv(randomId), 0).xyz;
+  vec3 toRandom = inPos - randomPos;
+  float randomDistSq = dot(toRandom, toRandom);
+
+  // Update closest if random is closer (and not self)
+  vec3 repelDir;
+  float repelDistSq;
+  if (randomDistSq < closestDistSq) {
+    closestIdx = float(randomId);
+    repelDir = toRandom;
+    repelDistSq = randomDistSq;
+  } else {
+    repelDir = toClosest;
+    repelDistSq = closestDistSq;
+  } 
+
+  // Overnormalized repel force (divide by sqLen)
+  vec3 repelForce = repelDir / (repelDistSq + 0.0001); 
+
   // Fetch Flow Data
   vec2 uv = inPos.xy * 0.5 + 0.5;
   
@@ -78,7 +117,8 @@ void main() {
   vec3 combinedVelo = noiseSpeed * noise * noiseAmount + drift;
   combinedVelo.y += yWind;
   combinedVelo.z += zForce;
-  
+  combinedVelo += repelForce * repel;
+
   combinedVelo *= speed; 
   
   combinedVelo.xy += flow * flowStrength;
@@ -93,5 +133,5 @@ void main() {
 
   newPos.xy = mod(newPos.xy + wrapBound, wrapBound * 2.0) - wrapBound;
 
-  pos = vec4(newPos, 1.0);
+  pos = vec4(newPos, closestIdx);
 }
