@@ -26,6 +26,8 @@ uniform float flowStrength;
 
 uniform vec2 aspect;
 uniform float repel;
+uniform float lineStrength;
+uniform float lineFreq;
 
 in vec2 particleId;
 
@@ -119,9 +121,14 @@ void main() {
   combinedVelo.z += zForce;
   combinedVelo += repelForce * repel;
 
-  combinedVelo *= speed; 
-  
+  combinedVelo *= speed;
+
   combinedVelo.xy += flow * flowStrength;
+
+  // Horizontal line alignment: push particles up or down based on y position
+  float lineMod = mod(inPos.y, lineFreq) / lineFreq; // 0..1 within each band
+  float lineFlow = (lineMod < 0.5) ? -1.0 : 1.0;     // push to band edges
+  combinedVelo.y += lineFlow * lineStrength;
 
   vec3 newPos = inPos + combinedVelo * vec3(aspect.yx * invZ, 1.0);
   

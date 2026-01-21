@@ -34,9 +34,10 @@ function stringToHue(str: string): number {
     for (let i = 0; i < str.length; i++) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    // Exclude Red (around 0/360). Valid range 60..300.
-    const normalized = (Math.abs(hash) % 240) + 60;
-    return normalized;
+    // Exclude Green (80-160). Valid: 0-80, 160-360 (280 degrees)
+    let hue = Math.abs(hash) % 280;
+    if (hue >= 80) hue += 80; // Skip green zone
+    return hue;
 }
 
 class ParticleSystem {
@@ -63,7 +64,7 @@ class ParticleSystem {
   getScrollY: () => number;
 
   // Sequence State
-  phaseDuration: number = 7.0;
+  phaseDuration: number = 8.0;
   lastSwitchTime: number = 0;
   coupleIndex: number = 0;
   path: string[] = [];
@@ -288,12 +289,12 @@ class ParticleSystem {
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 4 * peakedFlow);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 6 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     this.noiseTime += deltaTime * 0.1; 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseTime"), this.noiseTime);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), Math.sin(time * 0.1) * 0.3 + 0.4);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.4);
     
     // Drift: High at edges, Low at center
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * rawFlow); 
@@ -308,6 +309,12 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "zGravity"), 0.1);
 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "repel"), 0.05 * rawFlow);
+
+    // Horizontal line alignment (active when flow is strong)
+    const lineStrength = 0.001 / (0.001 + 0.5 + 0.5 * Math.cos((phase - 0.1) * Math.PI * 2.0))
+    console.log(lineStrength)
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "lineStrength"), lineStrength * 0.01);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "lineFreq"), 0.03);
 
     const aspectX = Math.sqrt(this.canvas.width / this.canvas.height);
     gl.uniform2f(gl.getUniformLocation(this.simProgram, "aspect"), aspectX, 1.0/aspectX);
@@ -340,7 +347,7 @@ class ParticleSystem {
     
     // Focus Distance Animation (4.0 -> 1.5 -> 4.0)
     // Peak (1.5) at phase 0.5
-    const focusCos = Math.cos((phase - 0.5) * Math.PI * 2.0);
+    const focusCos = Math.cos((phase - 0.5) * Math.PI * 2.0 * 2);
     const focusDistance = 2.8 - 1 * focusCos;
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "focusDistance"), focusDistance);
 
