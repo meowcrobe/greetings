@@ -360,7 +360,7 @@ class ParticleSystem {
     
     gl.uniform3fv(gl.getUniformLocation(this.lineProgram, "colorA"), this.currentColors.a); 
     gl.uniform3fv(gl.getUniformLocation(this.lineProgram, "colorB"), this.currentColors.b); 
-    gl.uniform1f(gl.getUniformLocation(this.lineProgram, "intensity"), 0.5 * (1.0 - rawFlow)); 
+    gl.uniform1f(gl.getUniformLocation(this.lineProgram, "intensity"), 0.35 * (1.0 - rawFlow)); 
     
     gl.bindVertexArray(this.lineVao);
     // Render lines for a subset (e.g., 6.25%) to keep it clean
