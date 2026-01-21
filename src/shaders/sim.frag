@@ -68,7 +68,7 @@ void main() {
   
   vec2 flow = texture(flowMap, uv).xy; 
 
-  vec4 noisePos = vec4(vec3(inPos.xy * inPos.z * aspect, inPos.z) * 1., noiseTime);
+  vec4 noisePos = vec4(vec3(inPos.xy * inPos.z * aspect, inPos.z) * noiseFrequency, noiseTime);
   vec3 noise = fbm4d(noisePos);
 
   float zForce = (zCenter - inPos.z) * zGravity;

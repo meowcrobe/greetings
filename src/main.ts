@@ -285,17 +285,17 @@ class ParticleSystem {
     // Cosine Wave: 0 -> 2 -> 0
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
-    const flowStrength = 2 * peakedFlow; 
+    const flowStrength = 4 * peakedFlow; 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), flowStrength);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
-    this.noiseTime += deltaTime * 0.4; 
+    this.noiseTime += deltaTime * 0.1; 
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseTime"), this.noiseTime);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseFrequency"), 0.4);
     
     // Drift: High at edges, Low at center
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.3 * peakedFlow); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 - 0.4 * peakedFlow); 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.8 - 0.7 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0); 
@@ -333,7 +333,7 @@ class ParticleSystem {
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "invSqrtNumParticles"), 1.0/this.sqrtNumParticles);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "invNumParticles"), 1.0/this.numParticles);
     
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "intensityFactor"), 1.0);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "intensityFactor"), 0.7);
     
     // Focus Distance Animation (4.0 -> 1.5 -> 4.0)
     // Peak (1.5) at phase 0.5
@@ -356,9 +356,9 @@ class ParticleSystem {
     // Sync blink to phase for consistent timing
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkPhase"), phase);
     
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkAmount"), 3.0);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkSlope"), 15.0);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "relativeFeather"), 0.5); 
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkAmount"), 6.0);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "blinkSlope"), 35.0);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "relativeFeather"), 0.3); 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "maxFd"), 3.0); 
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "mixBias"), peakedFlow);
 
