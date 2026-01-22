@@ -12,10 +12,10 @@ import { TextManager } from './text-manager';
 const names = [
 // greetings
   "Matthi", 
-  "Philipp",
+  "philipp",
   "Raphaël", 
   "aBe", 
-  "Tom", 
+  "tom", 
   "gabor", 
   "fairlix", 
   "iq", 
@@ -27,6 +27,7 @@ const names = [
 // geliked
   "jcelerier", 
   "Nikita", 
+  "tinka"
 ];
 
 function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
