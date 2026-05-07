@@ -86,6 +86,7 @@ class ParticleSystem {
   phaseDuration: number = 7.0;
   lastSwitchTime: number = 0;
   nameIndex: number = names.length + 1; 
+  recentIndices: number[] = [];
   pathDir: number = 1;
 
   noiseTime = 0;
@@ -97,7 +98,14 @@ class ParticleSystem {
   constructor(canvas: HTMLCanvasElement, getScrollY: () => number) {
     this.canvas = canvas;
     this.getScrollY = getScrollY;
-    const gl = canvas.getContext('webgl2');
+    const gl = canvas.getContext('webgl2', {
+      alpha: true,
+      premultipliedAlpha: true,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      desynchronized: false,
+    });
     if (!gl) throw new Error('WebGL 2 not supported');
     this.gl = gl;
     
@@ -120,6 +128,12 @@ class ParticleSystem {
     this.quadVao = this.createQuad();
     this.lineVao = this.createLineVao();
     
+    // Initialize recent indices history
+    const historySize = Math.floor(names.length / 2);
+    for (let i = 0; i < historySize; i++) {
+        this.recentIndices.push(names.length + i);
+    }
+
     // Initialize Sequence
     this.stepSequence()
 
@@ -137,22 +151,26 @@ class ParticleSystem {
     this.textManager.computeJFA();
     
     // Center on Random
-    console.log("index", this.nameIndex, "name", text);
+    // console.log("index", this.nameIndex, "name", text);
     const hue = stringToHue(text);
     this.targetColors.a = hsv2rgb(hue % 360, 1, 1);
     this.targetColors.b = hsv2rgb((hue + 120) % 360, 1, 1);
   }
   
   stepSequence() {
-    // random name
-    let nextIndex = Math.floor(Math.random() * (names.length - 1))
-    if (nextIndex >= this.nameIndex) nextIndex += 1;
+    // random name avoiding recent indices
+    let nextIndex;
+    let safety = 0;
+    do {
+        nextIndex = Math.floor(Math.random() * names.length);
+        safety++;
+    } while (this.recentIndices.includes(nextIndex) && safety < 100);
+
+    // Update history
+    this.recentIndices.shift();
+    this.recentIndices.push(nextIndex);
+
     this.nameIndex = nextIndex;
-
-    if (this.nameIndex >= names.length) {
-        this.nameIndex = (this.nameIndex + 1) % names.length;
-    }
-
     this.updateText();
   }
 
@@ -310,7 +328,7 @@ class ParticleSystem {
     const rawFlow = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2.0);
     const peakedFlow = Math.pow(rawFlow, 2.0); 
     
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 2 * peakedFlow ** 2);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "flowStrength"), 2.5 * peakedFlow ** 2);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "rawFlow"), rawFlow);
 
     this.noiseTime += deltaTime * 0.1; 
@@ -320,7 +338,7 @@ class ParticleSystem {
     // Exaggerated sine: snaps to ±1 quickly, inverts each phase
     const s = Math.sin((time / (this.phaseDuration * 2) - 0.1) * Math.PI * 2);
     const driftFactor = Math.sign(s) * Math.pow(Math.abs(s), 0.5);
-    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.2 * driftFactor); 
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, "driftAmount"), 0.25 * driftFactor); 
     
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "noiseAmount"), 0.8 - 0.7 * peakedFlow);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, "yWind"), 0); 
@@ -350,7 +368,8 @@ class ParticleSystem {
     gl.clear(gl.COLOR_BUFFER_BIT);
     
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE); 
+    // Additively accumulate RGB, but keep alpha from ramping up as aggressively.
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     // --- Render Lines ---
     gl.useProgram(this.lineProgram);
@@ -398,7 +417,7 @@ class ParticleSystem {
     gl.uniform3fv(gl.getUniformLocation(this.renderProgram, "colorB"), this.currentColors.b); 
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, "intensityColor"), 1.0, 0.7, 0.2);  
     
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "dofAmount"), 2 - peakedFlow * 0.5);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, "dofAmount"), 2 - peakedFlow);
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, "aspect"), aspectX, 1.0/aspectX);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, "particleSize"), 0.008);
     
