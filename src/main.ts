@@ -7,6 +7,7 @@ import LINE_VERT from './shaders/line.vert';
 import LINE_FRAG from './shaders/line.frag';
 import QUAD_VERT from './shaders/quad.vert';
 import DEBUG_FRAG from './shaders/debug.frag';
+import COMPOSITE_FRAG from './shaders/composite.frag';
 import { TextManager } from './text-manager';
 
 const names = [
@@ -63,6 +64,7 @@ class ParticleSystem {
   
   textManager: TextManager;
   debugProgram: WebGLProgram;
+  compositeProgram: WebGLProgram;
 
   sqrtNumParticles: number = 128;
   numParticles: number;
@@ -77,6 +79,8 @@ class ParticleSystem {
   
   quadVao: WebGLVertexArrayObject;
   lineVao: WebGLVertexArrayObject;
+  sceneTexture: WebGLTexture;
+  sceneFramebuffer: WebGLFramebuffer;
   
   startTime: number;
   lastScrollY: number = 0;
@@ -121,12 +125,16 @@ class ParticleSystem {
     this.renderProgram = this.createProgram(RENDER_VERT, RENDER_FRAG);
     this.lineProgram = this.createProgram(LINE_VERT, LINE_FRAG);
     this.debugProgram = this.createProgram(QUAD_VERT, DEBUG_FRAG);
+    this.compositeProgram = this.createProgram(QUAD_VERT, COMPOSITE_FRAG);
     
     this.textManager = new TextManager(gl);
 
     this.initTextures();
     this.quadVao = this.createQuad();
     this.lineVao = this.createLineVao();
+    this.sceneTexture = gl.createTexture()!;
+    this.sceneFramebuffer = gl.createFramebuffer()!;
+    this.initSceneTarget();
     
     // Initialize recent indices history
     const historySize = Math.floor(names.length / 2);
@@ -270,6 +278,32 @@ class ParticleSystem {
   resize(width: number, height: number) {
     this.canvas.width = width;
     this.canvas.height = height;
+    this.initSceneTarget();
+  }
+
+  initSceneTarget() {
+    const gl = this.gl;
+
+    gl.bindTexture(gl.TEXTURE_2D, this.sceneTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      this.canvas.width,
+      this.canvas.height,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      null
+    );
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.sceneFramebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.sceneTexture, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
   private lastTime = 0; 
@@ -362,14 +396,15 @@ class ParticleSystem {
     gl.bindVertexArray(this.quadVao);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.sceneFramebuffer);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     
     gl.enable(gl.BLEND);
-    // Additively accumulate RGB, but keep alpha from ramping up as aggressively.
-    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    // Keep additive accumulation in RGB only. Final page-facing alpha is resolved in a separate pass.
+    gl.colorMask(true, true, true, false);
 
     // --- Render Lines ---
     gl.useProgram(this.lineProgram);
@@ -433,7 +468,21 @@ class ParticleSystem {
 
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.numParticles);
     
-    gl.colorMask(true, true, true, true); // Restore Alpha Write
+    gl.colorMask(true, true, true, true);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.disable(gl.BLEND);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(this.compositeProgram);
+    gl.bindVertexArray(this.quadVao);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.sceneTexture);
+    gl.uniform1i(gl.getUniformLocation(this.compositeProgram, "u_texture"), 0);
+    gl.uniform1f(gl.getUniformLocation(this.compositeProgram, "u_alphaScale"), 0.8);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     // this.renderDebug();
 
